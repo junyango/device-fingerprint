@@ -1,14 +1,18 @@
 import os
 import pandas as pd
 import features_extraction
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn import preprocessing
-from sklearn.preprocessing import MinMaxScaler
+
+# pre-processing
+from scipy import signal
+from sklearn.preprocessing import StandardScaler
 
 # Constant to declare for the parameters for the sliding window
-WINDOW_SIZE = 64
-STEP = 52
+WINDOW_SIZE = 512
+STEP = 489
+order = 3
+f_sample = 100
+f_cutoff = 30
+nyquist_rate = f_cutoff / (f_sample / 2)
 
 
 # Data path should arrive in the format of <phone>/<vibrated>/<frequency>/<.csv> file
@@ -17,8 +21,23 @@ def create_windows(data_path):
     df = pd.read_csv(data_path, usecols=[1, 2, 3], header=None)
     # Assigning columns to the data set
     df.columns = columns
-
     data_readings = df.values
+    # # `noise reduction
+    for axis in range(0, 3):
+        # order 3 lowpass butterworth filter
+        b, a = signal.butter(order, nyquist_rate)
+        data_readings[:, axis] = signal.filtfilt(b, a, data_readings[:, axis])
+
+    ###############################################################################################
+    # Trying different scaling functions
+    ###############################################################################################
+    # Min Max Scaler
+    # min_max_scaler = preprocessing.MinMaxScaler()
+    # data_readings = min_max_scaler.fit_transform(data_readings)
+
+    # Standard Scaler
+    scaler = StandardScaler()
+    data_readings = scaler.fit_transform(data_readings)
     num_rows = len(data_readings)
     all_window = []
 
@@ -28,31 +47,11 @@ def create_windows(data_path):
 
     return all_window
 
-
-def create_segments(data_path):
-    columns = ["x", "y", "z"]
-    df = pd.read_csv(data_path, usecols=[1, 2, 3], header=None)
-    # Assigning columns to the data set
-    df.columns = columns
-    # Normalizing the raw data
-    scaler = MinMaxScaler()
-    scaled_data = scaler.fit_transform(df.values)
-    num_rows = len(scaled_data)
-    all_segments = []
-
-    for start in range(0, num_rows - WINDOW_SIZE, WINDOW_SIZE):
-        segment = scaled_data[start:start+WINDOW_SIZE]
-        all_segments.append(segment)
-
-    return all_segments
-
-
 # Getting labels for phone data
 phone_list = []
-data_dir = os.path.abspath("./data")
+data_dir = os.path.abspath("./100hz_data")
 for phone in os.listdir(data_dir):
     phone_list.append(phone)
-
 
 columns = ['min_x', 'min_y', 'min_z', 'min_rss', 'max_x', 'max_y', 'max_z', 'max_rss', 'std_x', 'std_y', 'std_z',
            'std_rss', 'mean_x', 'mean_y', 'mean_z', 'mean_rss', 'phone']
@@ -67,7 +66,7 @@ for folder in os.listdir(data_dir):
         csv_path = os.path.join(vibrated_folder, csv)
 
         # Making the entire CSV file return a list of list of segments
-        data_segments = create_segments(csv_path)
+        data_segments = create_windows(csv_path)
 
         # For each segment, i extract the features
         for i in data_segments:
@@ -84,28 +83,29 @@ main_df.to_csv("./features.csv")
 # TEST DATA #
 ######################################################################################################
 test_df = pd.DataFrame(columns=columns)
-test_dir = os.path.abspath("./test_data")
+test_dir = os.path.abspath("./test")
 
-for csv in os.listdir(test_dir):
-    csv_path = os.path.join(test_dir, csv)
+# Setting up to traverse through CSV files to extract features
+for folder in os.listdir(test_dir):
+    data_segments = []
+    phone_folder = os.path.abspath(os.path.join(test_dir, folder))
+    list_of_csv = os.listdir(phone_folder)
+    for csv in list_of_csv:
+        csv_path = os.path.join(phone_folder, csv)
 
-    # Making the entire CSV file return a list of list of segments
-    data_segments = create_segments(csv_path)
-    # For each segment, i extract the features
-    for i in data_segments:
-        features_csv = []
-        features_csv = features_extraction.extract_features(i)
-        if "s5" in csv:
-            label = "s5"
-        else:
-            label = "blue_huawei"
+        # Making the entire CSV file return a list of list of segments
+        data_segments = create_windows(csv_path)
 
-        features_csv.append(label)
-        test_df = test_df.append(pd.Series(features_csv, index=test_df.columns), ignore_index=True)
+        # For each segment, i extract the features
+        for i in data_segments:
+            features_csv = []
+            features_csv = features_extraction.extract_features(i)
+            label = str(folder)
+            features_csv.append(label)
+            test_df = test_df.append(pd.Series(features_csv, index=test_df.columns), ignore_index=True)
 
 # Export to CSV for machine learning
 test_df.to_csv("./testtest.csv")
-
 
 # ##################################################################
 # # For graph plotting and visualization purposes
@@ -158,15 +158,3 @@ test_df.to_csv("./testtest.csv")
 #     plt.savefig("./" + name1 + "_" + name2 + "/" + str(j) + name1 + "_" + name2 + '.png')
 #     plt.clf()
 #
-
-
-
-
-
-
-
-
-
-
-
-
