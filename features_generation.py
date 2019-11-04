@@ -5,10 +5,11 @@ import features_extraction
 # pre-processing
 from scipy import signal
 from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 
 # Constant to declare for the parameters for the sliding window
-WINDOW_SIZE = 512
-STEP = 489
+WINDOW_SIZE = 256
+STEP = 128
 order = 3
 f_sample = 100
 f_cutoff = 30
@@ -47,6 +48,7 @@ def create_windows(data_path):
 
     return all_window
 
+
 # Getting labels for phone data
 phone_list = []
 data_dir = os.path.abspath("./100hz_data")
@@ -54,7 +56,10 @@ for phone in os.listdir(data_dir):
     phone_list.append(phone)
 
 columns = ['min_x', 'min_y', 'min_z', 'min_rss', 'max_x', 'max_y', 'max_z', 'max_rss', 'std_x', 'std_y', 'std_z',
-           'std_rss', 'mean_x', 'mean_y', 'mean_z', 'mean_rss', 'phone']
+           'std_rss', 'mean_x', 'mean_y', 'mean_z', 'mean_rss', 'variance_x', 'variance_y', 'variance_z',
+           'variance_rss', 'kurtosis_x', 'kurtosis_y', 'kurtosis_z', 'kurtosis_rss',
+           'skew_x', 'skew_y', 'skew_z', 'skew_rss', 'phone']
+
 main_df = pd.DataFrame(columns=columns)
 
 # Setting up to traverse through CSV files to extract features

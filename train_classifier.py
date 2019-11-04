@@ -2,8 +2,11 @@ import os
 
 import numpy as np
 import pandas as pd
+import warnings
 
 # label phone models
+from sklearn.ensemble import RandomForestClassifier
+
 phone_models = {
     "black_huawei": 1,
     "galaxy_note5": 2,
@@ -14,12 +17,15 @@ phone_models = {
     "mi_max": 7
 }
 
+warnings.filterwarnings("ignore")
+
 
 def evaluate(model, x_train, x_test, y_train, y_test):
     model.fit(x_train, y_train)
     print("\n" + "-" * 15 + " " + type(model).__name__ + " " + "-" * 15)
     print("Accuracy on training set is : {}".format(model.score(x_train, y_train)))
     print("Accuracy on test set is : {}".format(model.score(x_test, y_test)))
+    print("\n" + "-" * 50)
 
 
 # Read dataset to pandas dataframe
@@ -55,35 +61,37 @@ for label in test_labels:
     test_label_num.append(phone_models[label])
 
 X_test = np.asarray(test_data.drop("phone", axis=1))
-print(X_test.shape)
 y_test = np.asarray(test_label_num)
 
 
-###############################################################################################
+##############################################################################################
 # Evaluating Random Forest
 # Feature importance shows decision tree feature decision importance
-###############################################################################################
+##############################################################################################
+from sklearn.metrics import accuracy_score
 
-# # RandomForest
-# model = RandomForestClassifier(n_estimators=1000)
-# model.fit(X_train, y_train)
-# y_pred = model.predict(X_test)
-# from sklearn.metrics import confusion_matrix
-# # Model Accuracy: how often is the classifier correct
-# print("Accuracy:", metrics.accuracy_score(y_test, y_pred))
-# print(confusion_matrix(y_test, y_pred))
+# RandomForest
+model = RandomForestClassifier(n_estimators=1000)
+model.fit(X_train, y_train)
+y_pred = model.predict(X_test)
+from sklearn.metrics import confusion_matrix
+# Model Accuracy: how often is the classifier correct
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print(confusion_matrix(y_test, y_pred))
 
-# # Feature importance
-# import numpy as np
-# importances = model.feature_importances_
-# indices = np.argsort(importances)
-# plt.title("Feature importances")
-# plt.barh(range(len(indices)), importances[indices])
-# plt.yticks(range(len(indices)), [gyro_data.columns[i] for i in indices])
-# plt.xlabel("Relative importance")
-# plt.show()
-# evaluate(model, X_train, X_test, y_train, y_test)
+# Feature importance
+import numpy as np
+import matplotlib.pyplot as plt
+importances = model.feature_importances_
+indices = np.argsort(importances)
+plt.title("Feature importances")
+plt.barh(range(len(indices)), importances[indices])
+plt.yticks(range(len(indices)), [gyro_data.columns[i] for i in indices])
+plt.xlabel("Relative importance")
+plt.show()
+evaluate(model, X_train, X_test, y_train, y_test)
 
+print("-----------------------------------------------------------------------------------")
 ###############################################################################################
 # Evaluating SVM kernels and tuning the hyperparameters C and gamma
 # C is a regularization parameter that controls the trade off between the achieving a low training error

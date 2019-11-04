@@ -1,5 +1,38 @@
 import numpy as np
 import math
+from scipy.stats import kurtosis, skew
+
+
+def skewness(window):
+    skew_list = []
+    x, y, z, rss_list = segregate(window)
+    skew_list.append(skew(x))
+    skew_list.append(skew(y))
+    skew_list.append(skew(z))
+    skew_list.append(skew(rss_list))
+
+    return skew_list
+
+
+def kurtosis_values(window):
+    kurtosis_list = []
+    x, y, z, rss_list = segregate(window)
+    kurtosis_list.append(kurtosis(x))
+    kurtosis_list.append(kurtosis(y))
+    kurtosis_list.append(kurtosis(z))
+    kurtosis_list.append(kurtosis(rss_list))
+
+    return kurtosis_list
+
+
+def variance(window):
+    variance_list = []
+    x, y, z, rss_list = segregate(window)
+    variance_list.append(np.var(x))
+    variance_list.append(np.var(y))
+    variance_list.append(np.var(z))
+    variance_list.append(np.var(rss_list))
+    return variance_list
 
 
 def segregate(window):
@@ -63,8 +96,7 @@ def mean(window):
     return mean_list
 
 
-# Order of features: min x y z rss | max x y z rss | std x y z rss | mean x y z rss
+# Order of features: min x y z rss | max x y z rss | std x y z rss | mean x y z rss | variance x y z rss | kurtosis x y z rss
 def extract_features(window):
-    return minimum(window) + maximum(window) + stddev(window) + mean(window)
-
-
+    return minimum(window) + maximum(window) + stddev(window) + mean(window) + variance(window) + kurtosis_values(
+        window) + skewness(window)
