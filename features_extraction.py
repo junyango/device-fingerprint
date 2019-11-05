@@ -97,6 +97,7 @@ def mean(window):
 
 
 # Order of features: min x y z rss | max x y z rss | std x y z rss | mean x y z rss | variance x y z rss | kurtosis x y z rss
+# Followed by: skewness x y z rss
 def extract_features(window):
     return minimum(window) + maximum(window) + stddev(window) + mean(window) + variance(window) + kurtosis_values(
         window) + skewness(window)

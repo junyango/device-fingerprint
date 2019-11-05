@@ -8,7 +8,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import MinMaxScaler
 
 # Constant to declare for the parameters for the sliding window
-WINDOW_SIZE = 256
+WINDOW_SIZE = 512
 STEP = 128
 order = 3
 f_sample = 100
@@ -83,34 +83,6 @@ for folder in os.listdir(data_dir):
 
 # Export to CSV for machine learning
 main_df.to_csv("./features.csv")
-
-######################################################################################################
-# TEST DATA #
-######################################################################################################
-test_df = pd.DataFrame(columns=columns)
-test_dir = os.path.abspath("./test")
-
-# Setting up to traverse through CSV files to extract features
-for folder in os.listdir(test_dir):
-    data_segments = []
-    phone_folder = os.path.abspath(os.path.join(test_dir, folder))
-    list_of_csv = os.listdir(phone_folder)
-    for csv in list_of_csv:
-        csv_path = os.path.join(phone_folder, csv)
-
-        # Making the entire CSV file return a list of list of segments
-        data_segments = create_windows(csv_path)
-
-        # For each segment, i extract the features
-        for i in data_segments:
-            features_csv = []
-            features_csv = features_extraction.extract_features(i)
-            label = str(folder)
-            features_csv.append(label)
-            test_df = test_df.append(pd.Series(features_csv, index=test_df.columns), ignore_index=True)
-
-# Export to CSV for machine learning
-test_df.to_csv("./testtest.csv")
 
 # ##################################################################
 # # For graph plotting and visualization purposes

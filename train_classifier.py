@@ -1,12 +1,19 @@
 import os
-
-import numpy as np
-import pandas as pd
+import pickle
 import warnings
 
-# label phone models
+import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
 
+# Initializing variables to find best model
+best_model = ""
+best_score = 0
+
+# Switch off all warnings
+warnings.filterwarnings("ignore")
+
+# label phone models
 phone_models = {
     "black_huawei": 1,
     "galaxy_note5": 2,
@@ -17,8 +24,6 @@ phone_models = {
     "mi_max": 7
 }
 
-warnings.filterwarnings("ignore")
-
 
 def evaluate(model, x_train, x_test, y_train, y_test):
     model.fit(x_train, y_train)
@@ -27,8 +32,12 @@ def evaluate(model, x_train, x_test, y_train, y_test):
     print("Accuracy on test set is : {}".format(model.score(x_test, y_test)))
     print("\n" + "-" * 50)
 
+    return model.score(x_test, y_test)
 
-# Read dataset to pandas dataframe
+
+###############################################################################################
+# Reading training dataset
+###############################################################################################
 root_dir = os.path.abspath("./")
 for file in os.listdir(root_dir):
     if "features.csv" in file:
@@ -38,65 +47,42 @@ for file in os.listdir(root_dir):
 full_feature_file_path = os.path.join(root_dir, feature_file)
 gyro_data = pd.read_csv(full_feature_file_path, index_col=0)
 labels = list(gyro_data['phone'])
+gyro_data = gyro_data.drop("phone", axis=1)
 label_num = []
 for label in labels:
     label_num.append(phone_models[label])
 
-# X_train, X_test, y_train, y_test = train_test_split(gyro_data, labels, test_size=0.33, random_state=42)
-X_train = np.asarray(gyro_data.drop("phone", axis=1))
-print(X_train.shape)
-y_train = np.asarray(label_num)
+X_train, X_test, y_train, y_test = train_test_split(gyro_data, label_num, test_size=0.3, random_state=42)
 
-# Test set
-# Read dataset to pandas dataframe
-for file in os.listdir(root_dir):
-    if "testtest.csv" in file:
-        test_file = file
+# ##############################################################################################
+# # Evaluating Random Forest
+# # Feature importance shows decision tree feature decision importance
+# ##############################################################################################
+#
+# # RandomForest
+# model_rfc = RandomForestClassifier(n_estimators=1000)
+# model_rfc.fit(X_train, y_train)
+#
+# # Feature importance
+# import numpy as np
+# import matplotlib.pyplot as plt
+#
+# importances = model_rfc.feature_importances_
+# indices = np.argsort(importances)
+# plt.title("Feature importances")
+# plt.barh(range(len(indices)), importances[indices])
+# plt.yticks(range(len(indices)), [gyro_data.columns[i] for i in indices])
+# plt.xlabel("Relative importance")
+# plt.show()
+# score = evaluate(model_rfc, X_train, X_test, y_train, y_test)
+# best_score = score
+# best_model = "random_forest"
 
-full_feature_test_path = os.path.join(root_dir, test_file)
-test_data = pd.read_csv(full_feature_test_path, index_col=0)
-test_labels = list(test_data['phone'])
-test_label_num = []
-for label in test_labels:
-    test_label_num.append(phone_models[label])
-
-X_test = np.asarray(test_data.drop("phone", axis=1))
-y_test = np.asarray(test_label_num)
-
-
-##############################################################################################
-# Evaluating Random Forest
-# Feature importance shows decision tree feature decision importance
-##############################################################################################
-from sklearn.metrics import accuracy_score
-
-# RandomForest
-model = RandomForestClassifier(n_estimators=1000)
-model.fit(X_train, y_train)
-y_pred = model.predict(X_test)
-from sklearn.metrics import confusion_matrix
-# Model Accuracy: how often is the classifier correct
-print("Accuracy:", accuracy_score(y_test, y_pred))
-print(confusion_matrix(y_test, y_pred))
-
-# Feature importance
-import numpy as np
-import matplotlib.pyplot as plt
-importances = model.feature_importances_
-indices = np.argsort(importances)
-plt.title("Feature importances")
-plt.barh(range(len(indices)), importances[indices])
-plt.yticks(range(len(indices)), [gyro_data.columns[i] for i in indices])
-plt.xlabel("Relative importance")
-plt.show()
-evaluate(model, X_train, X_test, y_train, y_test)
-
-print("-----------------------------------------------------------------------------------")
-###############################################################################################
+################################################################################################
 # Evaluating SVM kernels and tuning the hyperparameters C and gamma
 # C is a regularization parameter that controls the trade off between the achieving a low training error
 # Intuitively, the gamma parameter defines how far the influence of a single training example reaches
-###############################################################################################
+################################################################################################
 from sklearn import svm
 from sklearn.model_selection import GridSearchCV
 
@@ -104,26 +90,60 @@ from sklearn.model_selection import GridSearchCV
 Cs = [0.001, 0.01, 0.1, 1, 10]
 gammas = [0.001, 0.01, 0.1, 1]
 param_grid = {'C': Cs, 'gamma': gammas}
+
+################################################################################################
 # Linear kernel
+################################################################################################
 print("Evaluating hyperparameters for linear kernel...")
 grid_search = GridSearchCV(svm.SVC(kernel='linear'), param_grid, cv=5)
 grid_search.fit(X_train, y_train)
-model = svm.SVC(kernel="linear", gamma=grid_search.best_params_["gamma"], C=grid_search.best_params_["C"])
-evaluate(model, X_train, X_test, y_train, y_test)
+model_svm_linear = svm.SVC(kernel="linear", gamma=grid_search.best_params_["gamma"], C=grid_search.best_params_["C"])
+score = evaluate(model_svm_linear, X_train, X_test, y_train, y_test)
 
+# Checking and updating best score
+if best_score < score:
+    best_score = score
+    best_model = "svm_linear"
+
+################################################################################################
 # RBF Kernel
+################################################################################################
 print("Evaluating hyperparameters for RBF kernel...")
 grid_search = GridSearchCV(svm.SVC(kernel='rbf'), param_grid, cv=5)
 grid_search.fit(X_train, y_train)
-model = svm.SVC(kernel="rbf", gamma=grid_search.best_params_["gamma"], C=grid_search.best_params_["C"])
-evaluate(model, X_train, X_test, y_train, y_test)
+model_svm_rbf = svm.SVC(kernel="rbf", gamma=grid_search.best_params_["gamma"], C=grid_search.best_params_["C"])
+score = evaluate(model_svm_rbf, X_train, X_test, y_train, y_test)
 
+if best_score < score:
+    best_score = score
+    best_model = "svm_rbf"
+
+################################################################################################
 # Poly kernel
+################################################################################################
 print("Evaluating hyperparameters for Poly kernel...")
 grid_search = GridSearchCV(svm.SVC(kernel='poly'), param_grid, cv=5)
 grid_search.fit(X_train, y_train)
-model = svm.SVC(kernel="poly", gamma=grid_search.best_params_["gamma"], C=grid_search.best_params_["C"])
-evaluate(model, X_train, X_test, y_train, y_test)
+model_svm_poly = svm.SVC(kernel="poly", gamma=grid_search.best_params_["gamma"], C=grid_search.best_params_["C"])
+score = evaluate(model_svm_poly, X_train, X_test, y_train, y_test)
+
+if best_score < score:
+    best_score = score
+    best_model = "svm_rbf"
+
+###############################################################################################
+# Saving the best model
+###############################################################################################
+model_name = 'final_model.sav'
+if best_model == "svm_linear":
+    pickle.dump(model_svm_linear, open(model_name, 'wb'))
+elif best_model == "svm_rbf":
+    pickle.dump(model_svm_rbf, open(model_name, 'wb'))
+elif best_model == "svm_poly":
+    pickle.dump(model_svm_poly, open(model_name, 'wb'))
+# elif best_model == "random_forest":
+#     pickle.dump(model_rfc, open(model_name, 'wb'))
+
 
 
 ###############################################################################################
